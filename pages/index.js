@@ -35,7 +35,8 @@ function Index() {
     }
   };
 
-  const connectWalletHandler = async () => {
+  const connectWalletHandler = async (e) => {
+    e.preventDefault();
     const { ethereum } = window;
 
     if (!ethereum) {
@@ -125,7 +126,7 @@ function Index() {
   const mintNftButton = () => {
     return (
       <button
-        onClick={mintNftHandler}
+        type="submit"
         className={`${styles["button"]} ${styles["mint-nft-button"]}`}
       >
         Mint NFT
@@ -137,10 +138,59 @@ function Index() {
     checkWalletIsConnected();
   }, []);
 
+  const [formBody, setFormBody] = useState({
+    nric: "",
+    wallet: "",
+  });
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (formBody.nric === "") return alert("NRIC cannot be empty!");
+
+    if (currentAccount === null || currentAccount === "")
+      return alert(
+        "Unexpected Error, wallet address has not been not retrieved!"
+      );
+
+    formBody.wallet = currentAccount;
+
+    await fetch("http://127.0.0.1:8080/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formBody),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("result", data);
+
+        if (data.hasOwnProperty("error")) {
+          // throw error and dont do minting
+          console.log("error encountered, dont do minting", data);
+        } else {
+          mintNftHandler();
+        }
+      });
+  };
+
   return (
     <div className={styles["main-app"]}>
       <h1>NFT Web Application</h1>
-      <div>{currentAccount ? mintNftButton() : connectWalletButton()}</div>
+      <form
+        onSubmit={onSubmit}
+        className="w-1/3 justify-center border-2 flex flex-col gap-4 m-4 p-2"
+      >
+        <label htmlFor="nric">NRIC</label>
+        <input
+          className="border-2 border-gray-200  p-2"
+          onChange={() => {
+            setFormBody({ ...formBody, nric: event.target.value });
+          }}
+        ></input>
+
+        <div>{currentAccount ? mintNftButton() : connectWalletButton()}</div>
+      </form>
     </div>
   );
 }
