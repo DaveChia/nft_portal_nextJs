@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
+import styles from "/styles/index.module.css";
 
 const { Web3, eth } = require("web3");
 
-function Index({ Component, pageProps }) {
+function Index() {
   const [web3, setWeb3] = useState(null);
   const [address, setAddress] = useState(null);
   const [contract, setContract] = useState(null);
@@ -878,23 +879,13 @@ function Index({ Component, pageProps }) {
           .catch((err) => console.log(err));
       })
       .catch((err) => console.log(err));
-
-    // How to trigger READ smart contract methods
-    // c.methods
-    //   .DEFAULT_ADMIN_ROLE()
-    //   .call()
-    //   .then((_test) => {
-    //     // Optionally set it to the state to render it using React
-    //     console.log(_test);
-    //   })
-    //   .catch((err) => console.log(err));
   };
 
   const connectWalletButton = () => {
     return (
       <button
         onClick={connectWalletHandler}
-        className="cta-button connect-wallet-button"
+        className={`${styles["button"]} ${styles["connect-wallet-button"]}`}
       >
         Connect Wallet
       </button>
@@ -903,7 +894,10 @@ function Index({ Component, pageProps }) {
 
   const mintNftButton = () => {
     return (
-      <button onClick={mintNftHandler} className="cta-button mint-nft-button">
+      <button
+        onClick={mintNftHandler}
+        className={`${styles["button"]} ${styles["mint-nft-button"]}`}
+      >
         Mint NFT
       </button>
     );
@@ -914,8 +908,8 @@ function Index({ Component, pageProps }) {
   }, []);
 
   return (
-    <div className="main-app">
-      <h1>Scrappy Squirrels Tutorial</h1>
+    <div className={styles["main-app"]}>
+      <h1>NFT Web Application</h1>
       <div>{currentAccount ? mintNftButton() : connectWalletButton()}</div>
     </div>
   );
