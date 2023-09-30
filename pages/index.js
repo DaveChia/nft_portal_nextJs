@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import initializeWeb3 from "/utilities/Web3Initializer.js";
 import styles from "/styles/index.module.css";
 import nftContractJson from "/contracts/NftContract.json";
 import Head from "next/head";
@@ -8,7 +9,6 @@ const { Web3, eth } = require("web3");
 function Index() {
   const [web3, setWeb3] = useState(null);
   const [address, setAddress] = useState(null);
-  const [contract, setContract] = useState(null);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [enableMintButton, setEnableMintButton] = useState(false);
   const [nricFieldError, setNricFieldError] = useState("");
@@ -22,13 +22,8 @@ function Index() {
   const [nftMaxMintCount, setNftMaxMintCount] = useState(0);
   const [nftCurrentMintCount, setNftCurrentMintCount] = useState(0);
 
-  const getContractMetadata = async () => {
-    let w3 = new Web3(ethereum);
-    setWeb3(w3);
-    let c = new w3.eth.Contract(abi, contractAddress);
-    setContract(c);
-
-    c.methods
+  const getContractMetadata = (contract) => {
+    contract.methods
       .nft_metadata_ipfs_url()
       .call()
       .then((_metadata_url) => {
@@ -39,13 +34,8 @@ function Index() {
       .catch((err) => console.log(err));
   };
 
-  const getContractMaximumMintCount = async () => {
-    let w3 = new Web3(ethereum);
-    setWeb3(w3);
-    let c = new w3.eth.Contract(abi, contractAddress);
-    setContract(c);
-
-    c.methods
+  const getContractMaximumMintCount = (contract) => {
+    contract.methods
       .nft_minting_maximum_count()
       .call()
       .then((_count) => {
@@ -56,13 +46,8 @@ function Index() {
       .catch((err) => console.log(err));
   };
 
-  const getContractRemainingMintCount = async () => {
-    let w3 = new Web3(ethereum);
-    setWeb3(w3);
-    let c = new w3.eth.Contract(abi, contractAddress);
-    setContract(c);
-
-    c.methods
+  const getContractRemainingMintCount = (contract) => {
+    contract.methods
       .nft_minting_current_count()
       .call()
       .then((_count) => {
@@ -244,10 +229,23 @@ function Index() {
   };
 
   useEffect(() => {
-    getContractMaximumMintCount();
-    getContractRemainingMintCount();
-    getContractMetadata();
     checkWalletIsConnected();
+    initializeContract();
+    async function initializeContract() {
+      try {
+        const contractInstance = await initializeWeb3();
+
+        if (contractInstance) {
+          getContractMetadata(contractInstance);
+          getContractMaximumMintCount(contractInstance);
+          getContractRemainingMintCount(contractInstance);
+        } else {
+          console.error("Contract initialization failed.");
+        }
+      } catch (error) {
+        console.error("Error initializing contract:", error);
+      }
+    }
   }, []);
 
   const [formBody, setFormBody] = useState({
