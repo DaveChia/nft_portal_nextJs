@@ -13,6 +13,11 @@
   cursor: pointer;
 }
 
+.nft-image-wrapper {
+  width: 50%;
+  height: 50%;
+}
+
 .connect-wallet-button {
   background: rgb(32, 129, 226);
 }

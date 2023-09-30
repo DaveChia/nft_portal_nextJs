@@ -9,9 +9,38 @@ function Index() {
   const [address, setAddress] = useState(null);
   const [contract, setContract] = useState(null);
   const [currentAccount, setCurrentAccount] = useState(null);
+  const [nricFieldError, setNricFieldError] = useState("");
 
   let abi = nftContractJson.abi;
   let contractAddress = nftContractJson.contractAddress;
+  let nftMetadataUrl = "";
+  const [nftImageUrl, setNftImageUrl] = useState("");
+
+  const checkContractMetadataUrl = async () => {
+    let w3 = new Web3(ethereum);
+    setWeb3(w3);
+    let c = new w3.eth.Contract(abi, contractAddress);
+    setContract(c);
+
+    c.methods
+      .nft_metadata_ipfs_url()
+      .call()
+      .then((_metadata_url) => {
+        nftMetadataUrl = _metadata_url;
+
+        getNftImageUrl();
+      })
+      .catch((err) => console.log(err));
+  };
+
+  const getNftImageUrl = async () => {
+    await fetch(nftMetadataUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        setNftImageUrl(data.image);
+      })
+      .catch((err) => console.log(err));
+  };
 
   const checkWalletIsConnected = async () => {
     const { ethereum } = window;
@@ -135,6 +164,7 @@ function Index() {
   };
 
   useEffect(() => {
+    checkContractMetadataUrl();
     checkWalletIsConnected();
   }, []);
 
@@ -165,11 +195,13 @@ function Index() {
       .then((data) => {
         console.log("result", data);
 
-        if (data.hasOwnProperty("error")) {
+        if (data.hasOwnProperty("errors")) {
           // throw error and dont do minting
           console.log("error encountered, dont do minting", data);
+          setNricFieldError(data["errors"][0]["error"]);
         } else {
           mintNftHandler();
+          setNricFieldError("");
         }
       });
   };
@@ -177,17 +209,20 @@ function Index() {
   return (
     <div className={styles["main-app"]}>
       <h1>NFT Web Application</h1>
+      <img className={styles["nft-image-wrapper"]} src={nftImageUrl}></img>
       <form
         onSubmit={onSubmit}
         className="w-1/3 justify-center border-2 flex flex-col gap-4 m-4 p-2"
       >
         <label htmlFor="nric">NRIC</label>
         <input
-          className="border-2 border-gray-200  p-2"
+          className="border-2 border-gray-200 p-2"
           onChange={() => {
             setFormBody({ ...formBody, nric: event.target.value });
           }}
         ></input>
+
+        <p>{nricFieldError}</p>
 
         <div>{currentAccount ? mintNftButton() : connectWalletButton()}</div>
       </form>
