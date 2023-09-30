@@ -3,13 +3,11 @@ import initializeWeb3 from "/utilities/Web3Initializer.js";
 import styles from "/styles/index.module.css";
 import nftContractJson from "/contracts/NftContract.json";
 import Head from "next/head";
-import Spinner from "/components/Spinner";
 
 const { Web3, eth } = require("web3");
 
 function Index() {
   const [web3, setWeb3] = useState(null);
-  const [address, setAddress] = useState(null);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [enableMintButton, setEnableMintButton] = useState(false);
 
@@ -66,30 +64,44 @@ function Index() {
       .catch((err) => console.log(err));
   };
 
-  const checkWalletIsConnected = async () => {
+  const loadMintingWorkflow = async () => {
     const { ethereum } = window;
 
     if (!ethereum) {
-      console.log("Please install Metamask on your browser!");
-    } else {
-      console.log("Wallet exists, lets go!");
+      alert("Please install Metamask on your browser!");
+      console.log();
     }
-
     const accounts = await ethereum.request({
       method: "eth_accounts",
     });
 
     if (accounts.length != 0) {
       const account = accounts[0];
-      console.log("Account found: ", account);
+
       setCurrentAccount(account);
+
+      initializeContract();
+      async function initializeContract() {
+        try {
+          const contractInstance = await initializeWeb3();
+          if (contractInstance) {
+            getContractMetadata(contractInstance);
+            getContractMaximumMintCount(contractInstance);
+            getContractRemainingMintCount(contractInstance);
+          } else {
+            console.error("Contract initialization failed.");
+          }
+        } catch (error) {
+          console.error("Error initializing contract:", error);
+        }
+      }
     } else {
       console.log("An authorized account is not found!");
     }
   };
 
-  const connectWalletHandler = async (e) => {
-    e.preventDefault();
+  const connectWalletHandler = async () => {
+    console.log("test");
     const { ethereum } = window;
 
     if (!ethereum) {
@@ -101,9 +113,9 @@ function Index() {
         method: "eth_requestAccounts",
       });
 
-      console.log("Found an account! Address: ", accounts[0]);
-
       setCurrentAccount(accounts[0]);
+
+      loadMintingWorkflow();
     } catch (err) {
       console.log(err);
     }
@@ -178,36 +190,32 @@ function Index() {
 
   const mintNft = () => {
     return (
-      <div className={styles["mint-actions-wrapper"]}>
-        <form onSubmit={onSubmit}>
-          <input
-            className={styles["nric-input"]}
-            value={formBody.nric}
-            onChange={() => {
-              const value = event.target.value;
-              // Use a regular expression to match only alphanumeric characters
-              const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-              setEnableMintButton(alphanumericValue.length >= 8);
-              setFormBody({ ...formBody, nric: alphanumericValue });
-            }}
-            placeholder="Enter NRIC here"
-          ></input>
-          <div>
-            <small>
-              The NRIC must be of at least 8 alphanumeric characters
-            </small>
-          </div>
+      <form className={styles["mint-actions-wrapper"]} onSubmit={onSubmit}>
+        <input
+          className={styles["nric-input"]}
+          value={formBody.nric}
+          onChange={() => {
+            const value = event.target.value;
+            // Use a regular expression to match only alphanumeric characters
+            const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
+            setEnableMintButton(alphanumericValue.length >= 8);
+            setFormBody({ ...formBody, nric: alphanumericValue });
+          }}
+          placeholder="Enter your NRIC here to mint"
+        ></input>
+        <div>
+          <small>The NRIC must be of at least 8 alphanumeric characters</small>
+        </div>
 
-          <button
-            type="submit"
-            className={`${styles["button"]} ${styles["mint-nft-button"]} ${
-              enableMintButton == false ? styles["button-disabled"] : null
-            }`}
-          >
-            Mint NFT
-          </button>
-        </form>
-      </div>
+        <button
+          type="submit"
+          className={`${styles["button"]} ${styles["mint-nft-button"]} ${
+            enableMintButton == false ? styles["button-disabled"] : null
+          }`}
+        >
+          Mint NFT
+        </button>
+      </form>
     );
   };
 
@@ -250,31 +258,11 @@ function Index() {
   };
 
   const nftLoading = () => {
-    return (
-      <div className={styles.grid}>
-        <Spinner />
-      </div>
-    );
+    return <div className={styles.grid}>{connectWallet()}</div>;
   };
 
   useEffect(() => {
-    checkWalletIsConnected();
-    initializeContract();
-    async function initializeContract() {
-      try {
-        const contractInstance = await initializeWeb3();
-
-        if (contractInstance) {
-          getContractMetadata(contractInstance);
-          getContractMaximumMintCount(contractInstance);
-          getContractRemainingMintCount(contractInstance);
-        } else {
-          console.error("Contract initialization failed.");
-        }
-      } catch (error) {
-        console.error("Error initializing contract:", error);
-      }
-    }
+    loadMintingWorkflow();
   }, []);
 
   const [formBody, setFormBody] = useState({
@@ -309,7 +297,6 @@ function Index() {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("result123213213", data);
         setEnableMintButton(true);
         // if (data.hasOwnProperty("errors")) {
         //   // throw error and dont do minting
@@ -332,11 +319,11 @@ function Index() {
 
       <main>
         <h1 className={styles.title}>Mint a NFT!</h1>
-
         <p className={styles.description}>
-          Get started by connecting your Metamask Wallet
+          {nftImageUrl == null
+            ? "Get started by connecting your Metamask Wallet"
+            : ""}
         </p>
-
         {nftImageUrl == null ? nftLoading() : nftLoaded()}
       </main>
 

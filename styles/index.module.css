@@ -82,10 +82,25 @@
   height: 1em;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1050px) {
+  .card {
+    width: 90vw;
+    max-width: 90vw;
+  }
+
   .grid {
     width: 100%;
+    height: fit-content;
     flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .nft-image {
+    max-height: 40vw;
+  }
+
+  .nric-input {
+    width: 50%;
   }
 }
 
@@ -127,6 +142,7 @@
 }
 
 .connect-wallet-button {
+  width: 200px;
   background: rgb(32, 129, 226);
 }
 
@@ -145,10 +161,13 @@
 }
 
 .nric-input {
-  border-radius: 5px;
   height: 40px;
   padding: 10px;
   width: 75%;
+  border: 0px;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
 .button-disabled {
