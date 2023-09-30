@@ -3,6 +3,7 @@ import initializeWeb3 from "/utilities/Web3Initializer.js";
 import styles from "/styles/index.module.css";
 import nftContractJson from "/contracts/NftContract.json";
 import Head from "next/head";
+import Spinner from "/components/Spinner";
 
 const { Web3, eth } = require("web3");
 
@@ -11,7 +12,6 @@ function Index() {
   const [address, setAddress] = useState(null);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [enableMintButton, setEnableMintButton] = useState(false);
-  const [nricFieldError, setNricFieldError] = useState("");
 
   let abi = nftContractJson.abi;
   let contractAddress = nftContractJson.contractAddress;
@@ -28,7 +28,6 @@ function Index() {
       .call()
       .then((_metadata_url) => {
         nftMetadataUrl = _metadata_url;
-
         getNftImageUrl();
       })
       .catch((err) => console.log(err));
@@ -39,8 +38,6 @@ function Index() {
       .nft_minting_maximum_count()
       .call()
       .then((_count) => {
-        console.log(_count);
-
         setNftMaxMintCount(parseInt(_count));
       })
       .catch((err) => console.log(err));
@@ -214,17 +211,49 @@ function Index() {
     );
   };
 
-  const spinner = () => {
-    return <div className={styles["loader"]}></div>;
+  const nftDetails = () => {
+    return (
+      <div className={styles.card}>
+        <h3>About this NFT</h3>
+        <h4>{nftName}</h4>
+        <p>{nftDecription}</p>
+        <h4>
+          {nftCurrentMintCount} of {nftMaxMintCount} Minted
+        </h4>
+        <div className={styles["card-actions-wrapper"]}>
+          {currentAccount ? mintNft() : connectWallet()}
+        </div>
+      </div>
+    );
   };
 
   const nftImage = () => {
     return (
-      <img
-        className={styles["card-image"]}
-        src={nftImageUrl}
-        alt="Nft Image"
-      ></img>
+      <div className={styles["nft-image-wrapper"]}>
+        <img className={styles["nft-image"]} src={nftImageUrl}></img>
+        {/* <img
+        className={styles["nft-image"]}
+        src="https://images.unsplash.com/photo-1501183007986-d0d080b147f9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZnJlZXxlbnwwfHwwfHx8MA%3D%3D&w=1000&q=80"
+      ></img> */}
+      </div>
+    );
+  };
+
+  const nftLoaded = () => {
+    return (
+      <div className={styles.grid}>
+        {nftImage()}
+
+        {nftDetails()}
+      </div>
+    );
+  };
+
+  const nftLoading = () => {
+    return (
+      <div className={styles.grid}>
+        <Spinner />
+      </div>
     );
   };
 
@@ -282,15 +311,15 @@ function Index() {
       .then((data) => {
         console.log("result123213213", data);
         setEnableMintButton(true);
-        if (data.hasOwnProperty("errors")) {
-          // throw error and dont do minting
-          console.log("error encountered, dont do minting", data);
-          setNricFieldError(data["errors"][0]["error"]);
-        } else {
-          mintNftHandler();
-          setNricFieldError("");
-          setEnableMintButton(false);
-        }
+        // if (data.hasOwnProperty("errors")) {
+        //   // throw error and dont do minting
+        //   console.log("error encountered, dont do minting", data);
+        //   setNricFieldError(data["errors"][0]["error"]);
+        // } else {
+        //   mintNftHandler();
+        //   setNricFieldError("");
+        //   setEnableMintButton(false);
+        // }
       });
   };
 
@@ -308,27 +337,7 @@ function Index() {
           Get started by connecting your Metamask Wallet
         </p>
 
-        <div className={styles.grid}>
-          <div className={styles["nft-image-wrapper"]}>
-            <img className={styles["nft-image"]} src={nftImageUrl}></img>
-            {/* <img
-              className={styles["nft-image"]}
-              src="https://images.unsplash.com/photo-1501183007986-d0d080b147f9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZnJlZXxlbnwwfHwwfHx8MA%3D%3D&w=1000&q=80"
-            ></img> */}
-          </div>
-
-          <div className={styles.card}>
-            <h3>About this NFT</h3>
-            <h4>{nftName}</h4>
-            <p>{nftDecription}</p>
-            <h4>
-              {nftCurrentMintCount} of {nftMaxMintCount} Minted
-            </h4>
-            <div className={styles["card-actions-wrapper"]}>
-              {currentAccount ? mintNft() : connectWallet()}
-            </div>
-          </div>
-        </div>
+        {nftImageUrl == null ? nftLoading() : nftLoaded()}
       </main>
 
       <footer>
