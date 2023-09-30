@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import styles from "/styles/index.module.css";
 import nftContractJson from "/contracts/NftContract.json";
+import Head from "next/head";
 
 const { Web3, eth } = require("web3");
 
@@ -9,14 +10,19 @@ function Index() {
   const [address, setAddress] = useState(null);
   const [contract, setContract] = useState(null);
   const [currentAccount, setCurrentAccount] = useState(null);
+  const [enableMintButton, setEnableMintButton] = useState(false);
   const [nricFieldError, setNricFieldError] = useState("");
 
   let abi = nftContractJson.abi;
   let contractAddress = nftContractJson.contractAddress;
   let nftMetadataUrl = "";
-  const [nftImageUrl, setNftImageUrl] = useState("");
+  const [nftImageUrl, setNftImageUrl] = useState(null);
+  const [nftName, setNftName] = useState(null);
+  const [nftDecription, setNftDecription] = useState(null);
+  const [nftMaxMintCount, setNftMaxMintCount] = useState(0);
+  const [nftCurrentMintCount, setNftCurrentMintCount] = useState(0);
 
-  const checkContractMetadataUrl = async () => {
+  const getContractMetadata = async () => {
     let w3 = new Web3(ethereum);
     setWeb3(w3);
     let c = new w3.eth.Contract(abi, contractAddress);
@@ -33,11 +39,47 @@ function Index() {
       .catch((err) => console.log(err));
   };
 
+  const getContractMaximumMintCount = async () => {
+    let w3 = new Web3(ethereum);
+    setWeb3(w3);
+    let c = new w3.eth.Contract(abi, contractAddress);
+    setContract(c);
+
+    c.methods
+      .nft_minting_maximum_count()
+      .call()
+      .then((_count) => {
+        console.log(_count);
+
+        setNftMaxMintCount(parseInt(_count));
+      })
+      .catch((err) => console.log(err));
+  };
+
+  const getContractRemainingMintCount = async () => {
+    let w3 = new Web3(ethereum);
+    setWeb3(w3);
+    let c = new w3.eth.Contract(abi, contractAddress);
+    setContract(c);
+
+    c.methods
+      .nft_minting_current_count()
+      .call()
+      .then((_count) => {
+        console.log(_count);
+
+        setNftCurrentMintCount(parseInt(_count));
+      })
+      .catch((err) => console.log(err));
+  };
+
   const getNftImageUrl = async () => {
     await fetch(nftMetadataUrl)
       .then((res) => res.json())
       .then((data) => {
         setNftImageUrl(data.image);
+        setNftDecription(data.description);
+        setNftName(data.name);
       })
       .catch((err) => console.log(err));
   };
@@ -141,7 +183,7 @@ function Index() {
       .catch((err) => console.log(err));
   };
 
-  const connectWalletButton = () => {
+  const connectWallet = () => {
     return (
       <button
         onClick={connectWalletHandler}
@@ -152,19 +194,59 @@ function Index() {
     );
   };
 
-  const mintNftButton = () => {
+  const mintNft = () => {
     return (
-      <button
-        type="submit"
-        className={`${styles["button"]} ${styles["mint-nft-button"]}`}
-      >
-        Mint NFT
-      </button>
+      <div className={styles["mint-actions-wrapper"]}>
+        <form onSubmit={onSubmit}>
+          <input
+            className={styles["nric-input"]}
+            value={formBody.nric}
+            onChange={() => {
+              const value = event.target.value;
+              // Use a regular expression to match only alphanumeric characters
+              const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
+              setEnableMintButton(alphanumericValue.length >= 8);
+              setFormBody({ ...formBody, nric: alphanumericValue });
+            }}
+            placeholder="Enter NRIC here"
+          ></input>
+          <div>
+            <small>
+              The NRIC must be of at least 8 alphanumeric characters
+            </small>
+          </div>
+
+          <button
+            type="submit"
+            className={`${styles["button"]} ${styles["mint-nft-button"]} ${
+              enableMintButton == false ? styles["button-disabled"] : null
+            }`}
+          >
+            Mint NFT
+          </button>
+        </form>
+      </div>
+    );
+  };
+
+  const spinner = () => {
+    return <div className={styles["loader"]}></div>;
+  };
+
+  const nftImage = () => {
+    return (
+      <img
+        className={styles["card-image"]}
+        src={nftImageUrl}
+        alt="Nft Image"
+      ></img>
     );
   };
 
   useEffect(() => {
-    checkContractMetadataUrl();
+    getContractMaximumMintCount();
+    getContractRemainingMintCount();
+    getContractMetadata();
     checkWalletIsConnected();
   }, []);
 
@@ -173,8 +255,15 @@ function Index() {
     wallet: "",
   });
 
+  const onNricInputChange = () => {
+    console.log("test");
+  };
+
   const onSubmit = async (e) => {
+    setEnableMintButton(false);
     e.preventDefault();
+
+    console.log("test");
     if (formBody.nric === "") return alert("NRIC cannot be empty!");
 
     if (currentAccount === null || currentAccount === "")
@@ -193,8 +282,8 @@ function Index() {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("result", data);
-
+        console.log("result123213213", data);
+        setEnableMintButton(true);
         if (data.hasOwnProperty("errors")) {
           // throw error and dont do minting
           console.log("error encountered, dont do minting", data);
@@ -202,30 +291,107 @@ function Index() {
         } else {
           mintNftHandler();
           setNricFieldError("");
+          setEnableMintButton(false);
         }
       });
   };
 
   return (
-    <div className={styles["main-app"]}>
-      <h1>NFT Web Application</h1>
-      <img className={styles["nft-image-wrapper"]} src={nftImageUrl}></img>
-      <form
-        onSubmit={onSubmit}
-        className="w-1/3 justify-center border-2 flex flex-col gap-4 m-4 p-2"
-      >
-        <label htmlFor="nric">NRIC</label>
-        <input
-          className="border-2 border-gray-200 p-2"
-          onChange={() => {
-            setFormBody({ ...formBody, nric: event.target.value });
-          }}
-        ></input>
+    <div className={styles.container}>
+      <Head>
+        <title>Mint a NFT!</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
 
-        <p>{nricFieldError}</p>
+      <main>
+        <h1 className={styles.title}>Mint a NFT!</h1>
 
-        <div>{currentAccount ? mintNftButton() : connectWalletButton()}</div>
-      </form>
+        <p className={styles.description}>
+          Get started by connecting your Metamask Wallet
+        </p>
+
+        <div className={styles.grid}>
+          <div className={styles["nft-image-wrapper"]}>
+            <img className={styles["nft-image"]} src={nftImageUrl}></img>
+            {/* <img
+              className={styles["nft-image"]}
+              src="https://images.unsplash.com/photo-1501183007986-d0d080b147f9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZnJlZXxlbnwwfHwwfHx8MA%3D%3D&w=1000&q=80"
+            ></img> */}
+          </div>
+
+          <div className={styles.card}>
+            <h3>About this NFT</h3>
+            <h4>{nftName}</h4>
+            <p>{nftDecription}</p>
+            <h4>
+              {nftCurrentMintCount} of {nftMaxMintCount} Minted
+            </h4>
+            <div className={styles["card-actions-wrapper"]}>
+              {currentAccount ? mintNft() : connectWallet()}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer>
+        <a
+          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Created by Dave Chia
+        </a>
+      </footer>
+
+      <style jsx>{`
+        main {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        }
+        footer {
+          width: 100%;
+          height: 100px;
+          border-top: 1px solid #eaeaea;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        footer img {
+          margin-left: 0.5rem;
+        }
+        footer a {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          text-decoration: none;
+          color: inherit;
+        }
+        code {
+          background: #fafafa;
+          border-radius: 5px;
+          padding: 0.75rem;
+          font-size: 1.1rem;
+          font-family: Menlo, Monaco, Lucida Console, Liberation Mono,
+            DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace;
+        }
+      `}</style>
+
+      <style jsx global>{`
+        html,
+        body {
+          padding: 0;
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto,
+            Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue,
+            sans-serif;
+        }
+        * {
+          box-sizing: border-box;
+        }
+      `}</style>
     </div>
   );
 }
