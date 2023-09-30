@@ -6,14 +6,11 @@ import Head from "next/head";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const { Web3, eth } = require("web3");
-
 function Index() {
-  const [web3, setWeb3] = useState(null);
+  const [contract, setContract] = useState(null);
   const [currentAccount, setCurrentAccount] = useState(null);
   const [enableMintButton, setEnableMintButton] = useState(false);
 
-  let abi = nftContractJson.abi;
   let contractAddress = nftContractJson.contractAddress;
   let nftMetadataUrl = "";
   const [nftImageUrl, setNftImageUrl] = useState(null);
@@ -93,6 +90,7 @@ function Index() {
           const contractInstance = await initializeWeb3();
           if (contractInstance) {
             toast.success("Your wallet has been connected successfully!");
+            setContract(contractInstance);
             getContractMetadata(contractInstance);
             getContractMaximumMintCount(contractInstance);
             getContractRemainingMintCount(contractInstance);
@@ -104,7 +102,7 @@ function Index() {
         }
       }
     } else {
-      toast.error("An authorized account is not found!");
+      toast.error("Connect your metamask wallet to mint an NFT!");
     }
   };
 
@@ -128,20 +126,10 @@ function Index() {
     }
   };
 
-  const mintNftHandler = () => {
-    let w3 = new Web3(ethereum);
-    setWeb3(w3);
+  const mintNftHandler = async (mintToAddress, receipt) => {
+    const encoded = contract.methods.mint(mintToAddress, receipt).encodeABI();
 
-    let c = new w3.eth.Contract(abi, contractAddress);
-    setContract(c);
-
-    let encoded = c.methods
-      .mint(
-        "0x5544aeB07f7889a8525F7ccA994f685c5725E7B0",
-        "abcdefg002",
-        "www.google.com/ipfs"
-      )
-      .encodeABI();
+    console.log("encoded", encoded);
 
     let tx = {
       from: currentAccount,
@@ -151,21 +139,24 @@ function Index() {
       value: 0,
     };
 
+    console.log("tx", tx);
+
     let txHash = ethereum
       .request({
         method: "eth_sendTransaction",
         params: [tx],
       })
       .then((hash) => {
-        c.methods
-          .addresses_minting_data(contractAddress)
-          .call()
-          .then((_test) => {
-            toast.success(
-              "You can now view your transaction with hash: " + hash
-            );
-          })
-          .catch((err) => toast.error(err));
+        toast.success("You can now view your transaction with hash: " + hash);
+        // c.methods
+        //   .addresses_minting_data(contractAddress)
+        //   .call()
+        //   .then((_test) => {
+        //     toast.success(
+        //       "You can now view your transaction with hash: " + hash
+        //     );
+        //   })
+        //   .catch((err) => toast.error(err));
       })
       .catch((err) => toast.error(err));
   };
@@ -189,15 +180,20 @@ function Index() {
           value={formBody.nric}
           onChange={() => {
             const value = event.target.value;
-            // Use a regular expression to match only alphanumeric characters
-            const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
-            setEnableMintButton(alphanumericValue.length >= 8);
-            setFormBody({ ...formBody, nric: alphanumericValue });
+
+            if (value.length <= 10) {
+              // Use a regular expression to match only alphanumeric characters
+              const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, "");
+              setEnableMintButton(alphanumericValue.length >= 8);
+              setFormBody({ ...formBody, nric: alphanumericValue });
+            }
           }}
           placeholder="Enter your NRIC here to mint"
         ></input>
         <div>
-          <small>The NRIC must be of at least 8 alphanumeric characters</small>
+          <small>
+            The NRIC must be between 8 and 10 alphanumeric characters
+          </small>
         </div>
 
         <button
@@ -219,7 +215,7 @@ function Index() {
         <h4>{nftName}</h4>
         <p>{nftDecription}</p>
         <h4>
-          {nftCurrentMintCount} of {nftMaxMintCount} Minted
+          {nftCurrentMintCount} of {nftMaxMintCount} NFTs Minted
         </h4>
         <div className={styles["card-actions-wrapper"]}>
           {currentAccount ? mintNft() : connectWallet()}
@@ -267,8 +263,6 @@ function Index() {
     setEnableMintButton(false);
     e.preventDefault();
 
-    if (formBody.nric === "") return alert("NRIC cannot be empty!");
-
     formBody.wallet = currentAccount;
 
     await fetch("http://127.0.0.1:8080/users", {
@@ -280,17 +274,27 @@ function Index() {
     })
       .then((res) => res.json())
       .then((data) => {
-        setEnableMintButton(true);
-        // if (data.hasOwnProperty("errors")) {
-        //   // throw error and dont do minting
-        //   console.log("error encountered, dont do minting", data);
-        //   setNricFieldError(data["errors"][0]["error"]);
-        // } else {
-        //   mintNftHandler();
-        //   setNricFieldError("");
-        //   setEnableMintButton(false);
-        // }
-      });
+        if (data.hasOwnProperty("receipt")) {
+          mintNftHandler(data.user.wallet, data.receipt);
+        } else {
+          // Create global handler to show errors from API
+          if (data.hasOwnProperty("errors")) {
+            if (data.hasOwnProperty("message")) {
+              toast.error(data.message);
+            } else {
+              toast.error(
+                "Error encountered, the NFT was not minted, please try again later."
+              );
+            }
+          } else {
+            toast.error(
+              "Error encountered, the NFT was not minted, please try again later."
+            );
+          }
+          setEnableMintButton(true);
+        }
+      })
+      .catch((err) => toast.error(err));
   };
 
   return (
@@ -371,7 +375,7 @@ function Index() {
 
       <ToastContainer
         position="top-right"
-        autoClose={2000}
+        autoClose={4000}
         hideProgressBar={false}
       />
     </div>
