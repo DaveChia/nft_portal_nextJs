@@ -3,6 +3,8 @@ import initializeWeb3 from "/utilities/Web3Initializer.js";
 import styles from "/styles/index.module.css";
 import nftContractJson from "/contracts/NftContract.json";
 import Head from "next/head";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const { Web3, eth } = require("web3");
 
@@ -28,7 +30,9 @@ function Index() {
         nftMetadataUrl = _metadata_url;
         getNftImageUrl();
       })
-      .catch((err) => console.log(err));
+      .catch((err) =>
+        toast.error("Something went wrong, please try again later.")
+      );
   };
 
   const getContractMaximumMintCount = (contract) => {
@@ -38,7 +42,9 @@ function Index() {
       .then((_count) => {
         setNftMaxMintCount(parseInt(_count));
       })
-      .catch((err) => console.log(err));
+      .catch((err) =>
+        toast.error("Something went wrong, please try again later.")
+      );
   };
 
   const getContractRemainingMintCount = (contract) => {
@@ -46,11 +52,11 @@ function Index() {
       .nft_minting_current_count()
       .call()
       .then((_count) => {
-        console.log(_count);
-
         setNftCurrentMintCount(parseInt(_count));
       })
-      .catch((err) => console.log(err));
+      .catch((err) =>
+        toast.error("Something went wrong, please try again later.")
+      );
   };
 
   const getNftImageUrl = async () => {
@@ -61,15 +67,16 @@ function Index() {
         setNftDecription(data.description);
         setNftName(data.name);
       })
-      .catch((err) => console.log(err));
+      .catch((err) =>
+        toast.error("Something went wrong, please try again later.")
+      );
   };
 
   const loadMintingWorkflow = async () => {
     const { ethereum } = window;
 
     if (!ethereum) {
-      alert("Please install Metamask on your browser!");
-      console.log();
+      toast.error("Please install Metamask on your browser!");
     }
     const accounts = await ethereum.request({
       method: "eth_accounts",
@@ -85,27 +92,27 @@ function Index() {
         try {
           const contractInstance = await initializeWeb3();
           if (contractInstance) {
+            toast.success("Your wallet has been connected successfully!");
             getContractMetadata(contractInstance);
             getContractMaximumMintCount(contractInstance);
             getContractRemainingMintCount(contractInstance);
           } else {
-            console.error("Contract initialization failed.");
+            toast.error("Contract initialization failed.");
           }
         } catch (error) {
-          console.error("Error initializing contract:", error);
+          toast.error("Error initializing contract.");
         }
       }
     } else {
-      console.log("An authorized account is not found!");
+      toast.error("An authorized account is not found!");
     }
   };
 
   const connectWalletHandler = async () => {
-    console.log("test");
     const { ethereum } = window;
 
     if (!ethereum) {
-      alert("Please install Metamask!");
+      toast.error("Please install Metamask!");
     }
 
     try {
@@ -117,22 +124,16 @@ function Index() {
 
       loadMintingWorkflow();
     } catch (err) {
-      console.log(err);
+      toast.error("Error connecting to your wallet, please try again later.");
     }
   };
 
   const mintNftHandler = () => {
-    console.log("I am triggering this");
-
     let w3 = new Web3(ethereum);
     setWeb3(w3);
 
-    console.log("w3 ", w3);
-
     let c = new w3.eth.Contract(abi, contractAddress);
     setContract(c);
-
-    console.log("c", c);
 
     let encoded = c.methods
       .mint(
@@ -142,8 +143,6 @@ function Index() {
       )
       .encodeABI();
 
-    console.log("address", currentAccount);
-
     let tx = {
       from: currentAccount,
       to: contractAddress,
@@ -152,29 +151,23 @@ function Index() {
       value: 0,
     };
 
-    console.log("encoded", encoded);
-
     let txHash = ethereum
       .request({
         method: "eth_sendTransaction",
         params: [tx],
       })
       .then((hash) => {
-        console.log("You can now view your transaction with hash: " + hash);
-
-        // TODO: need to find a way to get the ipfs url of the NFT after minting to display it
-
         c.methods
           .addresses_minting_data(contractAddress)
           .call()
           .then((_test) => {
-            // Optionally set it to the state to render it using React
-            console.log(_test);
-            console.log("done");
+            toast.success(
+              "You can now view your transaction with hash: " + hash
+            );
           })
-          .catch((err) => console.log(err));
+          .catch((err) => toast.error(err));
       })
-      .catch((err) => console.log(err));
+      .catch((err) => toast.error(err));
   };
 
   const connectWallet = () => {
@@ -270,21 +263,11 @@ function Index() {
     wallet: "",
   });
 
-  const onNricInputChange = () => {
-    console.log("test");
-  };
-
   const onSubmit = async (e) => {
     setEnableMintButton(false);
     e.preventDefault();
 
-    console.log("test");
     if (formBody.nric === "") return alert("NRIC cannot be empty!");
-
-    if (currentAccount === null || currentAccount === "")
-      return alert(
-        "Unexpected Error, wallet address has not been not retrieved!"
-      );
 
     formBody.wallet = currentAccount;
 
@@ -314,7 +297,6 @@ function Index() {
     <div className={styles.container}>
       <Head>
         <title>Mint a NFT!</title>
-        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <main>
@@ -386,6 +368,12 @@ function Index() {
           box-sizing: border-box;
         }
       `}</style>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+      />
     </div>
   );
 }
