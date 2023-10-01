@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
 import initializeWeb3 from "/utilities/Web3Initializer.js";
+import {
+  getNftMetadata,
+  getNftMaximumMintCount,
+  getNftCurrentMintCount,
+  getMintedNftDetails,
+} from "/utilities/Web3Methods.js";
 import styles from "/styles/index.module.css";
 import nftContractJson from "/contracts/NftContract.json";
 import Head from "next/head";
@@ -10,7 +16,6 @@ function Index() {
   let contractInstance = null;
   let walletAddress = null;
   let contractAddress = nftContractJson.contractAddress;
-  let nftMetadataUrl = "";
 
   const [nftImageUrl, setNftImageUrl] = useState(null);
   const [nftName, setNftName] = useState(null);
@@ -22,77 +27,6 @@ function Index() {
   const [enableMintButton, setEnableMintButton] = useState(false);
   const [contractInstanceAsync, setContractInstanceAsync] = useState(false);
   const [walletAddressAsync, setWalletAddressAsync] = useState(false);
-
-  const getContractMetadata = () => {
-    contractInstance.methods
-      .nft_metadata_ipfs_url()
-      .call()
-      .then((_metadata_url) => {
-        nftMetadataUrl = _metadata_url;
-        getNftImageUrl();
-      })
-      .catch((err) =>
-        toast.error("Something went wrong, please try again later.")
-      );
-  };
-
-  const getContractMaximumMintCount = () => {
-    contractInstance.methods
-      .nft_minting_maximum_count()
-      .call()
-      .then((_count) => {
-        setNftMaxMintCount(parseInt(_count));
-      })
-      .catch((err) =>
-        toast.error("Something went wrong, please try again later.")
-      );
-  };
-
-  const getContractRemainingMintCount = () => {
-    contractInstance.methods
-      .nft_minting_current_count()
-      .call()
-      .then((_count) => {
-        setNftCurrentMintCount(parseInt(_count));
-      })
-      .catch((err) =>
-        toast.error("Something went wrong, please try again later.")
-      );
-  };
-
-  const getNftImageUrl = async () => {
-    await fetch(nftMetadataUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        setNftImageUrl(data.image);
-        setNftDecription(data.description);
-        setNftName(data.name);
-      })
-      .catch((err) =>
-        toast.error("Something went wrong, please try again later.")
-      );
-  };
-
-  const getMintingReceiptIfExists = () => {
-    contractInstance.methods
-      .addresses_minting_data(walletAddress)
-      .call()
-      .then((_data) => {
-        console.log("receipt", _data);
-
-        // setNftMintedReceipt(_data.receipt);
-
-        const date = new Date(parseInt(_data.minted_timestamp) * 1000);
-
-        // Format the date and time in the user's locale
-        const readableTimestamp = date.toLocaleString();
-
-        setNftMintedTimeStamp(readableTimestamp);
-      })
-      .catch((err) =>
-        toast.error("Something went wrong, please try again later.")
-      );
-  };
 
   const loadMintingWorkflow = async () => {
     const { ethereum } = window;
@@ -120,10 +54,28 @@ function Index() {
 
             contractInstance = initializedContractInstance;
             setContractInstanceAsync(contractInstance);
-            getContractMetadata();
-            getContractMaximumMintCount();
-            getContractRemainingMintCount();
-            getMintingReceiptIfExists();
+
+            const nftMetadata = await getNftMetadata(contractInstance);
+            setNftImageUrl(nftMetadata.imageUrl);
+            setNftDecription(nftMetadata.description);
+            setNftName(nftMetadata.name);
+
+            const nftMaximumMintCount = await getNftMaximumMintCount(
+              contractInstance
+            );
+            setNftMaxMintCount(nftMaximumMintCount);
+
+            const nftCurrentMintCount = await getNftCurrentMintCount(
+              contractInstance
+            );
+            setNftCurrentMintCount(nftCurrentMintCount);
+
+            const mintedNftDetails = await getMintedNftDetails(
+              contractInstance,
+              account
+            );
+            setNftMintedReceipt(mintedNftDetails.receipt);
+            setNftMintedTimeStamp(mintedNftDetails.minted_timestamp);
           } else {
             toast.error("Contract initialization failed.");
           }
@@ -162,8 +114,6 @@ function Index() {
       .mint(mintToAddress, receipt)
       .encodeABI();
 
-    console.log("encoded", encoded);
-
     let tx = {
       from: walletAddressAsync,
       to: contractAddress,
@@ -171,8 +121,6 @@ function Index() {
       nonce: "0x00",
       value: 0,
     };
-
-    console.log("tx", tx);
 
     let txHash = ethereum
       .request({
