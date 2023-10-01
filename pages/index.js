@@ -80,7 +80,7 @@ function Index() {
       .then((_data) => {
         console.log("receipt", _data);
 
-        setNftMintedReceipt(_data.receipt);
+        // setNftMintedReceipt(_data.receipt);
 
         const date = new Date(parseInt(_data.minted_timestamp) * 1000);
 
@@ -320,6 +320,7 @@ function Index() {
     await fetch(process.env.NEXT_PUBLIC_API_BASE_URL + "/users", {
       method: "POST",
       headers: {
+        Authorization: process.env.NEXT_PUBLIC_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(formBody),
