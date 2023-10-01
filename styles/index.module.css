@@ -177,3 +177,13 @@
   color: #ccc;
   background-color: #f2f2f2;
 }
+
+.minted-wrapper {
+  width: 75%;
+  word-wrap: break-word;
+}
+
+.minted-wrapper-title {
+  margin-top: 2rem;
+  margin-bottom: 0.2rem;
+}

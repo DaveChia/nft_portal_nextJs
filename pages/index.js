@@ -7,20 +7,22 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function Index() {
-  const [contract, setContract] = useState(null);
-  const [currentAccount, setCurrentAccount] = useState(null);
-  const [enableMintButton, setEnableMintButton] = useState(false);
-
+  let contractInstance = null;
+  let walletAddress = null;
   let contractAddress = nftContractJson.contractAddress;
   let nftMetadataUrl = "";
+
   const [nftImageUrl, setNftImageUrl] = useState(null);
   const [nftName, setNftName] = useState(null);
   const [nftDecription, setNftDecription] = useState(null);
   const [nftMaxMintCount, setNftMaxMintCount] = useState(0);
   const [nftCurrentMintCount, setNftCurrentMintCount] = useState(0);
+  const [nftMintedReceipt, setNftMintedReceipt] = useState(null);
+  const [nftMintedTimeStamp, setNftMintedTimeStamp] = useState(null);
+  const [enableMintButton, setEnableMintButton] = useState(false);
 
-  const getContractMetadata = (contract) => {
-    contract.methods
+  const getContractMetadata = () => {
+    contractInstance.methods
       .nft_metadata_ipfs_url()
       .call()
       .then((_metadata_url) => {
@@ -32,8 +34,8 @@ function Index() {
       );
   };
 
-  const getContractMaximumMintCount = (contract) => {
-    contract.methods
+  const getContractMaximumMintCount = () => {
+    contractInstance.methods
       .nft_minting_maximum_count()
       .call()
       .then((_count) => {
@@ -44,8 +46,8 @@ function Index() {
       );
   };
 
-  const getContractRemainingMintCount = (contract) => {
-    contract.methods
+  const getContractRemainingMintCount = () => {
+    contractInstance.methods
       .nft_minting_current_count()
       .call()
       .then((_count) => {
@@ -69,6 +71,27 @@ function Index() {
       );
   };
 
+  const getMintingReceiptIfExists = () => {
+    contractInstance.methods
+      .addresses_minting_data(walletAddress)
+      .call()
+      .then((_data) => {
+        console.log("receipt", _data);
+
+        setNftMintedReceipt(_data.receipt);
+
+        const date = new Date(parseInt(_data.minted_timestamp) * 1000);
+
+        // Format the date and time in the user's locale
+        const readableTimestamp = date.toLocaleString();
+
+        setNftMintedTimeStamp(readableTimestamp);
+      })
+      .catch((err) =>
+        toast.error("Something went wrong, please try again later.")
+      );
+  };
+
   const loadMintingWorkflow = async () => {
     const { ethereum } = window;
 
@@ -82,18 +105,21 @@ function Index() {
     if (accounts.length != 0) {
       const account = accounts[0];
 
-      setCurrentAccount(account);
+      walletAddress = account;
 
       initializeContract();
+
       async function initializeContract() {
         try {
-          const contractInstance = await initializeWeb3();
-          if (contractInstance) {
+          const initializedContractInstance = await initializeWeb3();
+          if (initializedContractInstance) {
             toast.success("Your wallet has been connected successfully!");
-            setContract(contractInstance);
-            getContractMetadata(contractInstance);
-            getContractMaximumMintCount(contractInstance);
-            getContractRemainingMintCount(contractInstance);
+
+            contractInstance = initializedContractInstance;
+            getContractMetadata();
+            getContractMaximumMintCount();
+            getContractRemainingMintCount();
+            getMintingReceiptIfExists();
           } else {
             toast.error("Contract initialization failed.");
           }
@@ -118,7 +144,7 @@ function Index() {
         method: "eth_requestAccounts",
       });
 
-      setCurrentAccount(accounts[0]);
+      walletAddress = accounts[0];
 
       loadMintingWorkflow();
     } catch (err) {
@@ -172,6 +198,30 @@ function Index() {
     );
   };
 
+  const nftMinted = () => {
+    return (
+      <div className={styles["mint-actions-wrapper"]}>
+        <div className={styles["minted-wrapper"]}>
+          {" "}
+          <h4 className={styles["minted-wrapper-title"]}>
+            Your NFT receipt is:
+          </h4>
+          <small>{nftMintedReceipt}</small>
+          <h4 className={styles["minted-wrapper-title"]}>
+            You minted the NFT at:{" "}
+          </h4>
+          <small>{nftMintedTimeStamp}</small>
+        </div>
+
+        <button
+          className={`${styles["button"]} ${styles["mint-nft-button"]} ${styles["button-disabled"]}`}
+        >
+          You already own this NFT
+        </button>
+      </div>
+    );
+  };
+
   const mintNft = () => {
     return (
       <form className={styles["mint-actions-wrapper"]} onSubmit={onSubmit}>
@@ -218,7 +268,7 @@ function Index() {
           {nftCurrentMintCount} of {nftMaxMintCount} NFTs Minted
         </h4>
         <div className={styles["card-actions-wrapper"]}>
-          {currentAccount ? mintNft() : connectWallet()}
+          {nftMintedReceipt ? nftMinted() : mintNft()}
         </div>
       </div>
     );
@@ -228,10 +278,6 @@ function Index() {
     return (
       <div className={styles["nft-image-wrapper"]}>
         <img className={styles["nft-image"]} src={nftImageUrl}></img>
-        {/* <img
-        className={styles["nft-image"]}
-        src="https://images.unsplash.com/photo-1501183007986-d0d080b147f9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZnJlZXxlbnwwfHwwfHx8MA%3D%3D&w=1000&q=80"
-      ></img> */}
       </div>
     );
   };
