@@ -20,6 +20,8 @@ function Index() {
   const [nftMintedReceipt, setNftMintedReceipt] = useState(null);
   const [nftMintedTimeStamp, setNftMintedTimeStamp] = useState(null);
   const [enableMintButton, setEnableMintButton] = useState(false);
+  const [contractInstanceAsync, setContractInstanceAsync] = useState(false);
+  const [walletAddressAsync, setWalletAddressAsync] = useState(false);
 
   const getContractMetadata = () => {
     contractInstance.methods
@@ -106,6 +108,7 @@ function Index() {
       const account = accounts[0];
 
       walletAddress = account;
+      setWalletAddressAsync(walletAddress);
 
       initializeContract();
 
@@ -116,6 +119,7 @@ function Index() {
             toast.success("Your wallet has been connected successfully!");
 
             contractInstance = initializedContractInstance;
+            setContractInstanceAsync(contractInstance);
             getContractMetadata();
             getContractMaximumMintCount();
             getContractRemainingMintCount();
@@ -145,6 +149,7 @@ function Index() {
       });
 
       walletAddress = accounts[0];
+      setWalletAddressAsync(walletAddress);
 
       loadMintingWorkflow();
     } catch (err) {
@@ -153,12 +158,14 @@ function Index() {
   };
 
   const mintNftHandler = async (mintToAddress, receipt) => {
-    const encoded = contract.methods.mint(mintToAddress, receipt).encodeABI();
+    const encoded = contractInstanceAsync.methods
+      .mint(mintToAddress, receipt)
+      .encodeABI();
 
     console.log("encoded", encoded);
 
     let tx = {
-      from: currentAccount,
+      from: walletAddressAsync,
       to: contractAddress,
       data: encoded,
       nonce: "0x00",
@@ -212,7 +219,6 @@ function Index() {
           </h4>
           <small>{nftMintedTimeStamp}</small>
         </div>
-
         <button
           className={`${styles["button"]} ${styles["mint-nft-button"]} ${styles["button-disabled"]}`}
         >
@@ -309,9 +315,9 @@ function Index() {
     setEnableMintButton(false);
     e.preventDefault();
 
-    formBody.wallet = currentAccount;
+    formBody.wallet = walletAddressAsync;
 
-    await fetch("http://127.0.0.1:8080/users", {
+    await fetch(process.env.NEXT_PUBLIC_API_BASE_URL + "/users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
