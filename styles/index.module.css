@@ -9,6 +9,19 @@
   color: white;
 }
 
+.tag-wrapper {
+  display: flex;
+
+  width: 100%;
+  justify-content: space-evenly;
+}
+
+.tag {
+  background-color: gray;
+  border-radius: 5px;
+  padding: 5px 20px 8px 20px;
+}
+
 .title a {
   text-decoration: none;
 }

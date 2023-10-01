@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import initializeWeb3 from "/utilities/Web3Initializer.js";
 import {
+  connectWalletAddresses,
+  getConnectedWalletAddresses,
   getNftMetadata,
   getNftMaximumMintCount,
   getNftCurrentMintCount,
@@ -16,6 +18,8 @@ function Index() {
   let contractInstance = null;
   let walletAddress = null;
   let contractAddress = nftContractJson.contractAddress;
+  let contractNetwork = nftContractJson.network;
+  let contractNftType = nftContractJson.nftType;
 
   const [nftImageUrl, setNftImageUrl] = useState(null);
   const [nftName, setNftName] = useState(null);
@@ -29,82 +33,70 @@ function Index() {
   const [walletAddressAsync, setWalletAddressAsync] = useState(false);
 
   const loadMintingWorkflow = async () => {
-    const { ethereum } = window;
+    const connectedWalletAddresses = await getConnectedWalletAddresses();
 
-    if (!ethereum) {
-      toast.error("Please install Metamask on your browser!");
-    }
-    const accounts = await ethereum.request({
-      method: "eth_accounts",
-    });
-
-    if (accounts.length != 0) {
-      const account = accounts[0];
-
-      walletAddress = account;
-      setWalletAddressAsync(walletAddress);
-
-      initializeContract();
-
-      async function initializeContract() {
-        try {
-          const initializedContractInstance = await initializeWeb3();
-          if (initializedContractInstance) {
-            toast.success("Your wallet has been connected successfully!");
-
-            contractInstance = initializedContractInstance;
-            setContractInstanceAsync(contractInstance);
-
-            const nftMetadata = await getNftMetadata(contractInstance);
-            setNftImageUrl(nftMetadata.imageUrl);
-            setNftDecription(nftMetadata.description);
-            setNftName(nftMetadata.name);
-
-            const nftMaximumMintCount = await getNftMaximumMintCount(
-              contractInstance
-            );
-            setNftMaxMintCount(nftMaximumMintCount);
-
-            const nftCurrentMintCount = await getNftCurrentMintCount(
-              contractInstance
-            );
-            setNftCurrentMintCount(nftCurrentMintCount);
-
-            const mintedNftDetails = await getMintedNftDetails(
-              contractInstance,
-              account
-            );
-            setNftMintedReceipt(mintedNftDetails.receipt);
-            setNftMintedTimeStamp(mintedNftDetails.minted_timestamp);
-          } else {
-            toast.error("Contract initialization failed.");
-          }
-        } catch (error) {
-          toast.error("Error initializing contract.");
-        }
-      }
-    } else {
+    if (connectedWalletAddresses.length == 0) {
       toast.error("Connect your metamask wallet to mint an NFT!");
+      return;
     }
+
+    const connectedWalletAddress = connectedWalletAddresses[0];
+
+    walletAddress = connectedWalletAddress;
+    setWalletAddressAsync(connectedWalletAddress);
+
+    initializeNftDetails();
   };
 
-  const connectWalletHandler = async () => {
-    const { ethereum } = window;
-
-    if (!ethereum) {
-      toast.error("Please install Metamask!");
-    }
-
+  async function initializeNftDetails() {
     try {
-      const accounts = await ethereum.request({
-        method: "eth_requestAccounts",
-      });
+      const initializedContractInstance = await initializeWeb3();
+      if (initializedContractInstance) {
+        toast.success("Your wallet has been connected successfully!");
 
-      walletAddress = accounts[0];
+        contractInstance = initializedContractInstance;
+        setContractInstanceAsync(contractInstance);
+
+        const nftMetadata = await getNftMetadata(contractInstance);
+        setNftImageUrl(nftMetadata.imageUrl);
+        setNftDecription(nftMetadata.description);
+        setNftName(nftMetadata.name);
+
+        const nftMaximumMintCount = await getNftMaximumMintCount(
+          contractInstance
+        );
+        setNftMaxMintCount(nftMaximumMintCount);
+
+        const nftCurrentMintCount = await getNftCurrentMintCount(
+          contractInstance
+        );
+        setNftCurrentMintCount(nftCurrentMintCount);
+
+        const mintedNftDetails = await getMintedNftDetails(
+          contractInstance,
+          walletAddress
+        );
+        setNftMintedReceipt(mintedNftDetails.receipt);
+        setNftMintedTimeStamp(mintedNftDetails.minted_timestamp);
+      } else {
+        toast.error("Contract initialization failed.");
+      }
+    } catch (error) {
+      toast.error(
+        "Error initializing contract. Please ensure you are using the correct network."
+      );
+    }
+  }
+
+  const connectWalletHandler = async () => {
+    try {
+      const connectedWalletAddresses = await connectWalletAddresses();
+
+      walletAddress = connectedWalletAddresses[0];
       setWalletAddressAsync(walletAddress);
 
       loadMintingWorkflow();
-    } catch (err) {
+    } catch (error) {
       toast.error("Error connecting to your wallet, please try again later.");
     }
   };
@@ -192,6 +184,9 @@ function Index() {
           </small>
         </div>
 
+        <h4 className={styles["minted-wrapper-title"]}>Your wallet address:</h4>
+        <small>{walletAddressAsync}</small>
+
         <button
           type="submit"
           className={`${styles["button"]} ${styles["mint-nft-button"]} ${
@@ -255,6 +250,19 @@ function Index() {
     setEnableMintButton(false);
     e.preventDefault();
 
+    const connectedAddresses = await getConnectedWalletAddresses();
+
+    if (!connectedAddresses.includes(walletAddressAsync)) {
+      toast.error(
+        "Your wallet address: " +
+          walletAddressAsync +
+          " is not authorized to perform the minting, please check your Metamask accounts."
+      );
+      return;
+    }
+
+    console.log("connectedAddresses", connectedAddresses);
+
     formBody.wallet = walletAddressAsync;
 
     await fetch(process.env.NEXT_PUBLIC_API_BASE_URL + "/users", {
@@ -303,6 +311,10 @@ function Index() {
             ? "Get started by connecting your Metamask Wallet"
             : ""}
         </p>
+        <div className={styles["tag-wrapper"]}>
+          <div className={styles["tag"]}>{contractNetwork}</div>
+          <div className={styles["tag"]}>{contractNftType}</div>
+        </div>
         {nftImageUrl == null ? nftLoading() : nftLoaded()}
       </main>
 

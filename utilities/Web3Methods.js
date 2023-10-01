@@ -81,3 +81,39 @@ export const getMintedNftDetails = async (contractInstance, walletAddress) => {
     throw error;
   }
 };
+
+export const connectWalletAddresses = async () => {
+  try {
+    const { ethereum } = window;
+
+    if (!ethereum) {
+      throw "Please install Metamask!";
+    }
+
+    const addresses = await ethereum.request({
+      method: "eth_requestAccounts",
+    });
+
+    return addresses;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getConnectedWalletAddresses = async () => {
+  try {
+    const { ethereum } = window;
+
+    if (!ethereum) {
+      throw "Please install Metamask!";
+    }
+
+    const addresses = await ethereum.request({
+      method: "eth_accounts",
+    });
+
+    return addresses;
+  } catch (error) {
+    throw error;
+  }
+};

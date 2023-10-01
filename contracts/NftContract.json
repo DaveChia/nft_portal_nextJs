@@ -1,5 +1,7 @@
 {
   "contractAddress": "0x0dCb7297eAe367945B557EB38EBA740dBe913F9d",
+  "network": "Mumbai Polygon",
+  "nftType": "ERC721",
   "abi": [
     {
       "inputs": [
