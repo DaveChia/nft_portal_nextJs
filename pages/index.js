@@ -181,15 +181,7 @@ function Index() {
       })
       .then((hash) => {
         toast.success("You can now view your transaction with hash: " + hash);
-        // c.methods
-        //   .addresses_minting_data(contractAddress)
-        //   .call()
-        //   .then((_test) => {
-        //     toast.success(
-        //       "You can now view your transaction with hash: " + hash
-        //     );
-        //   })
-        //   .catch((err) => toast.error(err));
+        setNftMintedReceipt(receipt);
       })
       .catch((err) => toast.error(err));
   };
