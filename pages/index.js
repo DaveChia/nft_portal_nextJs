@@ -15,8 +15,6 @@ import { toast } from "react-toastify";
 import CustomToast from "/components/Toast.js";
 
 function Index() {
-  let contractInstance = null;
-  let walletAddress = null;
   let contractAddress = nftContractJson.contractAddress;
   let contractNetwork = nftContractJson.network;
   let contractNftType = nftContractJson.nftType;
@@ -29,54 +27,57 @@ function Index() {
   const [nftMintedReceipt, setNftMintedReceipt] = useState(null);
   const [nftMintedTimeStamp, setNftMintedTimeStamp] = useState(null);
   const [enableMintButton, setEnableMintButton] = useState(false);
-  const [contractInstanceAsync, setContractInstanceAsync] = useState(false);
-  const [walletAddressAsync, setWalletAddressAsync] = useState(false);
+  const [walletAddress, setWalletAddress] = useState(null);
 
   const loadMintingWorkflow = async () => {
-    const connectedWalletAddresses = await getConnectedWalletAddresses();
+    let connectedWalletAddress = null;
 
-    if (connectedWalletAddresses.length == 0) {
-      toast.error("Connect your metamask wallet to mint an NFT!");
-      return;
+    try {
+      const connectedWalletAddresses = await getConnectedWalletAddresses();
+
+      if (connectedWalletAddresses.length == 0) {
+        toast.error("Connect your metamask wallet to mint an NFT!");
+        return;
+      }
+
+      connectedWalletAddress = connectedWalletAddresses[0];
+
+      setWalletAddress(connectedWalletAddress);
+
+      toast.success("Your wallet has been connected successfully!");
+    } catch (error) {
+      toast.error("Error connecting your wallet. Please try again later");
     }
-
-    const connectedWalletAddress = connectedWalletAddresses[0];
-
-    walletAddress = connectedWalletAddress;
-    setWalletAddressAsync(connectedWalletAddress);
 
     try {
       const initializedContractInstance = await initializeWeb3();
-      if (initializedContractInstance) {
-        toast.success("Your wallet has been connected successfully!");
 
-        contractInstance = initializedContractInstance;
-        setContractInstanceAsync(contractInstance);
-
-        const nftMetadata = await getNftMetadata(contractInstance);
-        setNftImageUrl(nftMetadata.imageUrl);
-        setNftDecription(nftMetadata.description);
-        setNftName(nftMetadata.name);
-
-        const nftMaximumMintCount = await getNftMaximumMintCount(
-          contractInstance
-        );
-        setNftMaxMintCount(nftMaximumMintCount);
-
-        const nftCurrentMintCount = await getNftCurrentMintCount(
-          contractInstance
-        );
-        setNftCurrentMintCount(nftCurrentMintCount);
-
-        const mintedNftDetails = await getMintedNftDetails(
-          contractInstance,
-          walletAddress
-        );
-        setNftMintedReceipt(mintedNftDetails.receipt);
-        setNftMintedTimeStamp(mintedNftDetails.minted_timestamp);
-      } else {
-        toast.error("Contract initialization failed.");
+      if (!initializedContractInstance) {
+        toast.error("Contract initialization failed. Please try again later");
+        return;
       }
+
+      const nftMetadata = await getNftMetadata(initializedContractInstance);
+      setNftImageUrl(nftMetadata.imageUrl);
+      setNftDecription(nftMetadata.description);
+      setNftName(nftMetadata.name);
+
+      const nftMaximumMintCount = await getNftMaximumMintCount(
+        initializedContractInstance
+      );
+      setNftMaxMintCount(nftMaximumMintCount);
+
+      const nftCurrentMintCount = await getNftCurrentMintCount(
+        initializedContractInstance
+      );
+      setNftCurrentMintCount(nftCurrentMintCount);
+
+      const mintedNftDetails = await getMintedNftDetails(
+        initializedContractInstance,
+        connectedWalletAddress
+      );
+      setNftMintedReceipt(mintedNftDetails.receipt);
+      setNftMintedTimeStamp(mintedNftDetails.minted_timestamp);
     } catch (error) {
       toast.error(
         "Error initializing contract. Please ensure you are using the correct network."
@@ -86,10 +87,7 @@ function Index() {
 
   const connectWalletHandler = async () => {
     try {
-      const connectedWalletAddresses = await connectWalletAddresses();
-
-      walletAddress = connectedWalletAddresses[0];
-      setWalletAddressAsync(walletAddress);
+      await connectWalletAddresses();
 
       loadMintingWorkflow();
     } catch (error) {
@@ -98,19 +96,25 @@ function Index() {
   };
 
   const mintNftHandler = async (mintToAddress, receipt) => {
-    const encoded = contractInstanceAsync.methods
+    const initializedContractInstance = await initializeWeb3();
+    if (!initializedContractInstance) {
+      toast.error("Contract initialization failed. Please try again later");
+      return;
+    }
+
+    const encoded = initializedContractInstance.methods
       .mint(mintToAddress, receipt)
       .encodeABI();
 
     let tx = {
-      from: walletAddressAsync,
+      from: walletAddress,
       to: contractAddress,
       data: encoded,
       nonce: "0x00",
       value: 0,
     };
 
-    let txHash = ethereum
+    ethereum
       .request({
         method: "eth_sendTransaction",
         params: [tx],
@@ -181,7 +185,7 @@ function Index() {
         </div>
 
         <h4 className={styles["minted-wrapper-title"]}>Your wallet address:</h4>
-        <small>{walletAddressAsync}</small>
+        <small>{walletAddress}</small>
 
         <button
           type="submit"
@@ -248,16 +252,16 @@ function Index() {
 
     const connectedAddresses = await getConnectedWalletAddresses();
 
-    if (!connectedAddresses.includes(walletAddressAsync)) {
+    if (!connectedAddresses.includes(walletAddress)) {
       toast.error(
         "Your wallet address: " +
-          walletAddressAsync +
+          walletAddress +
           " is not authorized to perform the minting, please check your Metamask accounts."
       );
       return;
     }
 
-    formBody.wallet = walletAddressAsync;
+    formBody.wallet = walletAddress;
 
     await fetch(process.env.NEXT_PUBLIC_API_BASE_URL + "/users", {
       method: "POST",
@@ -282,9 +286,7 @@ function Index() {
               );
             }
           } else {
-            toast.error(
-              "Error encountered, the NFT was not minted, please try again later."
-            );
+            toast.error(data.error);
           }
           setEnableMintButton(true);
         }
