@@ -11,8 +11,8 @@ import {
 import styles from "/styles/index.module.css";
 import nftContractJson from "/contracts/NftContract.json";
 import Head from "next/head";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
+import CustomToast from "/components/Toast.js";
 
 function Index() {
   let contractInstance = null;
@@ -45,10 +45,6 @@ function Index() {
     walletAddress = connectedWalletAddress;
     setWalletAddressAsync(connectedWalletAddress);
 
-    initializeNftDetails();
-  };
-
-  async function initializeNftDetails() {
     try {
       const initializedContractInstance = await initializeWeb3();
       if (initializedContractInstance) {
@@ -86,7 +82,7 @@ function Index() {
         "Error initializing contract. Please ensure you are using the correct network."
       );
     }
-  }
+  };
 
   const connectWalletHandler = async () => {
     try {
@@ -261,8 +257,6 @@ function Index() {
       return;
     }
 
-    console.log("connectedAddresses", connectedAddresses);
-
     formBody.wallet = walletAddressAsync;
 
     await fetch(process.env.NEXT_PUBLIC_API_BASE_URL + "/users", {
@@ -377,11 +371,10 @@ function Index() {
           box-sizing: border-box;
         }
       `}</style>
-
-      <ToastContainer
+      <CustomToast
         position="top-right"
-        autoClose={4000}
-        hideProgressBar={false}
+        autoCloseInSeconds={4000}
+        isHideProgressBar={false}
       />
     </div>
   );
