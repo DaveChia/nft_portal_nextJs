@@ -307,6 +307,9 @@ function Index() {
             ? "Get started by connecting your Metamask Wallet"
             : ""}
         </p>
+        <p className={styles["contract-address"]}>
+          NFT Contract Address: {contractAddress}
+        </p>
         <div className={styles["tag-wrapper"]}>
           <div className={styles["tag"]}>{contractNetwork}</div>
           <div className={styles["tag"]}>{contractNftType}</div>
